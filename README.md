@@ -14,7 +14,7 @@ The commands are recognized in real time by a Recurrent Neural Network (RNN) tra
 |---|---|
 | **Goal** | Control a game hands-free using spoken keywords |
 | **Task** | Keyword spotting (audio classification): `left`, `right` |
-| **Model** | RNN (Keras / TensorFlow) |
+| **Model** | RNN (Long Short Term Memory) |
 | **Data** | Google Speech Commands |
 | **Skills shown** | Audio feature extraction, sequence modeling, model deployment in an interactive app |
 
