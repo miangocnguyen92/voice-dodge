@@ -74,7 +74,7 @@ Input (time_steps, n_mfcc) → LSTM(64) → Dropout(0.3) → Dense(32, relu) →
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/<your-username>/voice-dodge.git
+git clone https://github.com/miangocnguyen92/voice-dodge.git
 cd voice-dodge
 
 # 2. Create a virtual environment and install dependencies
