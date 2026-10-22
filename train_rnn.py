@@ -1,7 +1,7 @@
 """
-Train RNN (LSTM) nhận diện 'left' / 'right' / 'other'.
-Chạy: python train_rnn.py
-Kết quả: kws_rnn.keras (model) + norm.npz (thông số chuẩn hoá) — game.py cần 2 file này.
+Train an RNN (LSTM) to recognize 'left' / 'right' / 'other'.
+Run: python train_rnn.py
+Output: kws_rnn.keras (model) + norm.npz (normalization stats); both are required by game.py.
 """
 import glob
 import os
@@ -11,47 +11,56 @@ import librosa
 import numpy as np
 
 DATA_DIR = "speech_commands"        
-# SR = 16000, mỗi giây âm thanh chia thành 16000 số, gọi là Hz
-# MFCC: cắt đoạn âm thanh thành từng khung nhỏ MFCC 
-# ý nghĩa của chia ra là gì?
-# mỗi khung thời gian có 40 number of features. User defined (dựa vào số frame để định nghĩa)
+# Audio settings:
+#   SR = 16000      -> sample rate: 1 second of audio = 16,000 samples (16 kHz)
+#   N_FFT = 1024    -> each frame analyzes a window of 1,024 samples (~64 ms)
+#   HOP = 512       -> frames move forward by 512 samples, overlapping by 50%
+#                      (1 second -> ~32 frames)
+#   N_MFCC = 40     -> 40 MFCC features describe each frame (a tunable hyperparameter)
+# Splitting audio into short frames captures how the sound changes over time,
+# which gives the RNN a sequence to read step by step.
 SR, N_MFCC, N_FFT, HOP = 16000, 40, 1024, 512
 # 3 labels
 LABELS = ["left", "right", "other"]
-# số mẫu "từ khác" và "im lặng/tiếng ồn"
-# sample left and right khoảng 3800 => chọn random = 4000 để training k bị imbalance
-# noise (N_SILENCE)
-# Cons của sampling: bỏ đi rất nhiều từ sound như left and right
-# Pros: random sampling 4000 để tránh imbalance
-# C1: nên làm stratified sampling để chia đểu việc chọn sample cho các mẫu thử , tránh TH chọn nhiều sample cho cùng 1 từ
-# C2: predict từng từ luôn (thay vì chỉ predict left and right or other)
+# Number of samples for the "other" class:
+#   N_OTHER   -> recordings of non-command words (yes, no, up, down, ...)
+#   N_SILENCE -> 1-second clips of background noise / silence
+# "left" and "right" each have ~3,800 recordings, so 4,000 "other" words are
+# randomly sampled to keep the classes roughly balanced.
+#
+# Trade-offs of random sampling:
+#   + Prevents the "other" class from dominating training
+#   - Discards most of the available non-command recordings
+#
+# Possible improvements:
+#   1. Stratified sampling across words, so no single word is over-represented
+#      in the "other" class
+#   2. Predict every word individually instead of grouping them into "other"
 N_OTHER, N_SILENCE = 4000, 1000        
 
 
-# tại sao cắt đúng 1 giây?
 def fix_length(y):
-    """Cắt đúng 1 giây âm thanh, nấu ngắn hơn thì thêm 0 là im lặng, dài hơn 1 giây thì cắt bớt."""
-    """Đưa array về đúng 16000 số"""
+        #Force audio to exactly 1 second (16,000 samples): pad with zeros (silence) if shorter, trim if longer.
     return np.pad(y, (0, max(0, SR - len(y))))[:SR]
 
 
 def mfcc(y):
-    """1 giây audio -> chuỗi (32 frame thời gian, 40 MFCC) làm input cho RNN."""
+    # Convert 1 second of audio into a sequence of shape (32 time frames, 40 MFCCs) as input for the RNN.
     m = librosa.feature.mfcc(y=fix_length(y), sr=SR, n_mfcc=N_MFCC,
                              n_fft=N_FFT, hop_length=HOP)
-    # đỗi sang 32 bit, nhẹ hơn cho Tensorflow chạy
+    # Transpose to (time, features) and convert to float32: lighter and the default type for TensorFlow
     return m.T.astype(np.float32)
 
-# Đọc file wav và chuyển về 16k Hz 
-# trả về [0]: chỉ lấy phần có audio (library librosa trả lại 2 biến audio + sr hz)
+# Load a .wav file and resample it to 16 kHz.
+# librosa.load() returns (audio, sample_rate); [0] keeps only the audio array.
 def load(path):
     return librosa.load(path, sr=SR)[0]
 
-# chuẩn bị data
+# Prepare the data
 def build_dataset():
     X, y = [], []
 
-    # Lớp 0, 1: "left", "right" 
+    # Class 0, 1: "left", "right" 
     for i, word in enumerate(["left", "right"]):
         files = glob.glob(f"{DATA_DIR}/{word}/*.wav")
         print(f"{word}: {len(files)} file")
@@ -61,7 +70,7 @@ def build_dataset():
             X.append(mfcc(load(f)))
             y.append(i)
 
-    # Lớp 2: các từ khác (yes, no, up, down...)
+    # Class 2: Other words (yes, no, up, down...)
     others = [f for d in os.listdir(DATA_DIR)
               if os.path.isdir(f"{DATA_DIR}/{d}")
               and d not in ("left", "right", "_background_noise_")
@@ -70,7 +79,7 @@ def build_dataset():
         X.append(mfcc(load(f)))
         y.append(2)
 
-    # Lớp 3: tiếng ồn nền / im lặng
+    # Class 3: Noise, silence
     noises = [load(f) for f in glob.glob(f"{DATA_DIR}/_background_noise_/*.wav")]
     for _ in range(N_SILENCE):
         n = random.choice(noises)
@@ -86,7 +95,7 @@ if __name__ == "__main__":
     from sklearn.metrics import confusion_matrix
     from sklearn.model_selection import train_test_split
 
-    # Trích xuất feature 1 lần rồi cache lại
+    # Extract features once and cache them to features.npz (reused on later runs)
     if os.path.exists("features.npz"):
         d = np.load("features.npz")
         X, y = d["X"], d["y"]
@@ -97,32 +106,31 @@ if __name__ == "__main__":
     if (np.bincount(y, minlength=3) == 0).any():
         raise SystemExit("Có lớp không có mẫu nào — xoá features.npz và kiểm tra thư mục dữ liệu.")
 
-    # Chuẩn hoá theo từng hệ số MFCC
+    # Standardize each MFCC coefficient (z-score) and save mean/std for use in game.py
     mean, std = X.mean(axis=(0, 1)), X.std(axis=(0, 1)) + 1e-6
     np.savez("norm.npz", mean=mean, std=std)
     # standard scaler 
     X = (X - mean) / std
 
-    # stratify y => theo class label để tránh bias từng label
-    # random state: giữ nguyên performance cho mỗi lần train lại model (nên dùng trong đi làm)
+    # stratify=y   -> keeps the same class proportions in train and test sets
+    # random_state -> fixes the split so results are reproducible across runs
     Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.15,
                                           stratify=y, random_state=42)
 
-    # RNN: 2 lớp LSTM đọc chuỗi MFCC theo thời gian
-    # trời ơi ko hiểu gì hết???
-    # backprogation là chạy hết model, rồi quay ngược lại
+    # RNN: two stacked LSTM layers read the MFCC sequence frame by frame over time.
+    # Training uses backpropagation: a forward pass computes predictions and the loss, then gradients flow backward through the network to update the weights.
     model = tf.keras.Sequential([
         tf.keras.layers.Input((X.shape[1], N_MFCC)), # 
         tf.keras.layers.LSTM(64, return_sequences=True), # gói 3 cổng mình học
         tf.keras.layers.Dropout(0.3), # trong hidden layer có nhiều nodes, có thể bị overfitting , drop 30% nodes để giảm overfitting
-        tf.keras.layers.LSTM(64), #ra dc giá trị predict
+        tf.keras.layers.LSTM(64), # ra dc giá trị predict
         tf.keras.layers.Dense(32, activation="relu"),
         tf.keras.layers.Dense(len(LABELS), activation="softmax"),
     ])
-    # backprogation chạy và tính ngược lại bằng gì?
-    model.compile(optimizer="adam",#back progation, adam or radation descent
+    
+    model.compile(optimizer="adam",# back progation, adam or radation descent
                   loss="sparse_categorical_crossentropy",
-                  metrics=["accuracy"]) # định nghĩa metric trả về
+                  metrics=["accuracy"]) 
     model.summary()
 
     model.fit(Xtr, ytr, validation_split=0.15, epochs=30, batch_size=64,
@@ -133,7 +141,7 @@ if __name__ == "__main__":
     print("Confusion matrix (left, right, other):")
     print(confusion_matrix(yte, model.predict(Xte).argmax(1), labels=[0, 1, 2]))
 
-    # lưu model vào 1 file để load lên gamepy
+    # Save the trained model so game.py can load it
     model.save("kws_rnn.keras")
-    # norm = weight của từng node
+    # norm.npz stores the MFCC mean/std, not model weights; the weights are inside kws_rnn.keras
     print("Đã lưu kws_rnn.keras và norm.npz")
