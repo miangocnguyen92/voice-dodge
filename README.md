@@ -1,4 +1,4 @@
-# 🎮 Voice Dodge — Voice-Controlled Game with an RNN Keyword Spotter
+# Voice Dodge — Voice-Controlled Game with an RNN Keyword Spotter
 
 A small arcade game where the player dodges falling rocks by saying **"left"** or **"right"**.
 The commands are recognized in real time by a Recurrent Neural Network (RNN) trained on the Google Speech Commands dataset.
@@ -8,7 +8,7 @@ The commands are recognized in real time by a Recurrent Neural Network (RNN) tra
 
 ---
 
-## 📌 Project Overview
+## Project Overview
 
 | | |
 |---|---|
@@ -20,7 +20,7 @@ The commands are recognized in real time by a Recurrent Neural Network (RNN) tra
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 voice-dodge/
@@ -37,7 +37,7 @@ voice-dodge/
 
 ---
 
-## 📥 Dataset
+## Dataset
 
 This project uses the **Google Speech Commands** dataset (Warden, 2018).
 
@@ -47,7 +47,7 @@ This project uses the **Google Speech Commands** dataset (Warden, 2018).
 
 ---
 
-## 🧠 Method
+## Method
 
 1. **Feature extraction** — Each 1-second audio clip is converted into a sequence of audio features (e.g. MFCCs).
 2. **Normalization** — Features are standardized; the mean/std are saved to `norm.npz` so the game applies the exact same transformation at inference time.
@@ -59,7 +59,7 @@ Input (time_steps, n_mfcc) → LSTM(64) → Dropout(0.3) → Dense(32, relu) →
 
 ---
 
-## 📊 Results
+## Results
 
 | Metric | Value |
 |---|---|
@@ -70,7 +70,7 @@ Input (time_steps, n_mfcc) → LSTM(64) → Dropout(0.3) → Dense(32, relu) →
 
 ---
 
-## 🚀 How to Run
+## How to Run
 
 ```bash
 # 1. Clone the repo
@@ -94,7 +94,7 @@ A working microphone is required to play.
 
 ---
 
-## ⚠️ Limitations & Future Work
+## Limitations & Future Work
 
 - Only two keywords are supported; could be extended to `up`, `down`, `stop`, etc.
 - Performance may drop with background noise or unfamiliar accents → add noise augmentation.
@@ -102,6 +102,6 @@ A working microphone is required to play.
 
 ---
 
-## 👤 Author
+## Author
 
 **Mia Nguyen** — [LinkedIn](https://www.linkedin.com/in/mianguyen92/) · [GitHub](https://github.com/miangocnguyen92)
