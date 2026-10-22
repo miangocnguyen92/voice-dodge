@@ -1,0 +1,19 @@
+# Virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Dataset & generated features (too large — download/recreate instead)
+speech_commands/
+features.npz
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
