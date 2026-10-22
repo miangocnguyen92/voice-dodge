@@ -61,12 +61,32 @@ Input (time_steps, n_mfcc) → LSTM(64) → Dropout(0.3) → Dense(32, relu) →
 
 ## Results
 
+The model was trained for up to 30 epochs with early stopping (patience = 4), which stopped training at epoch 11 and restored the best weights.
+
 | Metric | Value |
 |---|---|
-| Validation accuracy | `XX%` |
-| Test accuracy | `XX%` |
+| Training accuracy | 98.1% |
+| Validation accuracy | ~92% |
+| **Test accuracy** | **90.9%** |
 
-<!-- Optional: add a confusion matrix image, e.g. assets/confusion_matrix.png -->
+**Confusion matrix (test set)**
+
+| Actual \ Predicted | left | right | other |
+|---|---|---|---|
+| **left** | 512 | 12 | 46 |
+| **right** | 20 | 519 | 28 |
+| **other** | 39 | 26 | 685 |
+
+| Class | Precision | Recall |
+|---|---|---|
+| left | 89.7% | 89.8% |
+| right | 93.2% | 91.5% |
+| other | 90.3% | 91.3% |
+
+**Key observations**
+- The model rarely confuses **"left" with "right"**: only 32 of 1,137 commands (2.8%). This is the most critical error for gameplay, since it moves the player in the wrong direction.
+- Most errors involve the **"other"** class (non-command words). In the game, these are further reduced by the confidence threshold (0.85) and the volume gate.
+- The gap between training (98%) and validation (92%) accuracy suggests **mild overfitting**. Data augmentation (e.g., background noise) could improve generalization.
 
 ---
 
