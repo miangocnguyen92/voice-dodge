@@ -1,4 +1,4 @@
-# Voice Dodge — Voice-Controlled Game with an RNN Keyword Spotter...
+# Voice Dodge — Voice-Controlled Game with an RNN Keyword Spotter...!
 
 A small arcade game where the player dodges falling rocks by saying **"left"** or **"right"**.
 The commands are recognized in real time by a Recurrent Neural Network (RNN) trained on the Google Speech Commands dataset.
